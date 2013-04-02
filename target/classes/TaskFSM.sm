@@ -1,0 +1,141 @@
+%{
+//
+// Copyright (c) 2005 Acme, Inc.
+// All rights reserved.
+//
+// Acme - a name you can trust!
+//
+// Author: Wil E. Coyote (Hungericus Vulgarus)
+//
+%}
+
+// This FSM works for the Task class only and only the Task
+// class may instantiate it.
+
+%class Task
+%package com.meleemistress.smc.core
+%fsmclass TaskFSM
+%access package
+
+%start TaskFSM::Suspended
+%map TaskFSM
+%%
+	Suspended {
+		Start(timeslice: long) //transition
+			Running { //end state
+			}
+			
+		Block
+			Blocked {
+				blockTask();
+			}
+	}
+	
+	Running 
+		Exit {
+			stopSliceTimer();
+		}
+		{
+		Suspend //wait for another timeslice
+			Suspended {
+				stopSliceTimer();
+				suspendTask();
+			}
+			
+		Block
+			Blocked {
+				stopSliceTimer();
+				blockTask();
+			}
+			
+		Done
+			Stopped {
+				stopSliceTimer();
+				releaseResources();
+			}
+	}
+	
+	Blocked {
+		Unblock
+			Suspended {
+			}
+	}
+	
+	Stopping {
+		Stopped
+			Stopped {
+				releaseResources();
+			}
+			
+		Stop
+			nil
+			{}
+	}
+	
+	Stopped {
+		Stop
+			nil
+			{}
+			
+		Default
+			nil
+			{}
+	
+	}
+	
+	Deleted {
+	
+	//define all known transitions as loopbacks
+		Start(timeslice: long)
+			nil
+			{}
+			
+		Suspend()
+        nil
+        {}
+
+	    Block()
+	        nil
+	        {}
+	
+	    Unblock()
+	        nil
+	        {}
+	
+	    Done()
+	        nil
+	        {}
+	
+	    Stop()
+	        nil
+	        {}
+	
+	    Stopped()
+	        nil
+	        {}
+	
+	    Delete()
+	        nil
+	        {}
+	}
+	
+	Default {
+	
+		Stop
+			Stopping {
+				stopTask();
+			}
+			
+		Block
+			nil
+			{}
+			
+		Delete
+			Deleted
+			{}
+			
+		Default
+			nil
+			{}
+	}
+%%
